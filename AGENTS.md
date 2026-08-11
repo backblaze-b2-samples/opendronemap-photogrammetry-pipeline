@@ -20,6 +20,17 @@ infra/railway/     Deployment config
 infra/vercel/      Vercel deployment contract
 ```
 
+**Primary domain — Missions (the photogrammetry pipeline).** A Mission is a
+reconstruction job whose only datastore is a JSON manifest in B2 at
+`missions/<id>/mission.json` (no database). The domain spans
+`types/missions.py`, `service/missions.py` + `service/reconstruction.py`,
+`runtime/missions.py` + `runtime/reconstruction.py`, and the `repo/` adapters
+`missions.py` (manifest store + prefix-scoped delete), `transfer.py` (boto3
+managed multipart), and `odm.py` (the ONLY module that imports `pyodm`; keep the
+OpenDroneMap/NodeODM SDK contained here, same rule as boto3). Frontend surface:
+`/missions` and `/missions/[id]` plus `components/missions/`. See
+[ARCHITECTURE.md](ARCHITECTURE.md) for the B2 layout and data flows.
+
 ## 2. Building on This Starter Kit
 
 When this repo is used as the foundation for a new app, the following pieces are part of the starter contract — keep them. Adapt only what the new use case actually requires.
@@ -195,6 +206,8 @@ If documentation and implementation conflict, update docs in the same PR. Docume
 | Topic | Location |
 |-------|----------|
 | System layout, data flows, boundaries | [ARCHITECTURE.md](ARCHITECTURE.md) |
+| Missions (primary entity: CRUD + run) | [docs/features/missions.md](docs/features/missions.md) |
+| OpenDroneMap reconstruction (the marquee run) | [docs/features/reconstruction.md](docs/features/reconstruction.md) |
 | Feature docs | [docs/features/](docs/features/) |
 | User journeys | [docs/app-workflows.md](docs/app-workflows.md) |
 | Engineering workflows and testing | [docs/dev-workflows.md](docs/dev-workflows.md) |

@@ -1,12 +1,12 @@
 <!-- last_verified: 2026-07-30 -->
 # Security
 
-Security principles and implementation for the vibe-coding-starter-kit.
+Security principles and implementation for the opendronemap-photogrammetry-pipeline.
 
 ## Trust Boundaries
 
 - **Frontend -> API**: CORS-restricted to configured origins, scoped to `GET/POST/DELETE/OPTIONS`. `allow_credentials` is `False` (no cookie/session auth today); enable it only alongside real auth and a tightened origin allowlist.
-- **API -> B2**: Authenticated via `B2_KEY_ID` + `B2_APPLICATION_KEY`, signature v4
+- **API -> B2**: Authenticated via `B2_APPLICATION_KEY_ID` + `B2_APPLICATION_KEY`, signature v4 (endpoint derived from `B2_REGION`)
 - **Client -> B2**: Presigned URLs for download (10-min expiry, `Content-Disposition: attachment`) and for direct upload (short-lived PUT with the size and content-type signed in, so B2 rejects a mismatched body)
 
 ## Authentication & Multi-Tenancy
@@ -37,6 +37,16 @@ Uploads go directly from the browser to B2, so the API validates at two points:
 - Empty keys rejected
 - Path traversal patterns rejected (`../`, `%2e%2e`, backslashes, null bytes)
 - Optional prefix confinement: set `ALLOWED_KEY_PREFIX` (e.g. `uploads/`) to restrict key-addressed reads/deletes when the bucket is shared with other workloads. Empty by default — the by-key routes otherwise accept arbitrary folder and reserved-word keys by design.
+
+## Mission-Scoped Delete Confinement
+
+- Deleting a mission removes its manifest **and** every artifact under that
+  mission's prefix, but the sweep is confined to `missions/<id>/` only. The
+  delete path in `repo/missions.py` derives the prefix from the validated
+  mission id and `list_objects_v2`-then-`delete_objects` **only within that
+  prefix** — it never issues a bucket-wide delete. A mission id that fails key
+  validation (path traversal, empty) is rejected before any B2 call, so a
+  malformed id can neither escape its prefix nor widen the sweep.
 
 ## Download Safety
 
@@ -78,7 +88,7 @@ Uploads go directly from the browser to B2, so the API validates at two points:
 The [Railway](../infra/railway/README.md) and
 [Vercel](../infra/vercel/README.md) delivery contracts are the canonical
 locations for production variable classification and environment access rules.
-In particular, `B2_KEY_ID` and `B2_APPLICATION_KEY` are secrets; the web
+In particular, `B2_APPLICATION_KEY_ID` and `B2_APPLICATION_KEY` are secrets; the web
 service's `NEXT_PUBLIC_API_URL` is intentionally public build-time
 configuration and must never contain a credential. Keep production variables,
 logs, and metrics restricted to authorized operators.

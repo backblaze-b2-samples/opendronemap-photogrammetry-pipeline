@@ -1,0 +1,23 @@
+# Local OpenDroneMap engine (NodeODM REST API) for the reconstruction pipeline.
+#
+# NodeODM is CPU-based and containerized — no GPU is required. The backend
+# reaches it via ODM_NODE_URL (default http://localhost:3001). Start it with:
+#
+#   docker compose up -d
+#
+# NodeODM listens on port 3000 inside the container; we map it to host 3001 so
+# it never collides with Next.js dev on 3000.
+services:
+  nodeodm:
+    image: opendronemap/nodeodm:latest
+    container_name: odm-photogrammetry-nodeodm
+    ports:
+      - "3001:3000"
+    restart: unless-stopped
+    # Persist NodeODM's task workspace across restarts so an in-flight
+    # reconstruction survives a container bounce.
+    volumes:
+      - nodeodm-data:/var/www/data
+
+volumes:
+  nodeodm-data:

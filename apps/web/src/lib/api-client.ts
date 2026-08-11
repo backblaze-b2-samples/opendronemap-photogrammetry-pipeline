@@ -1,11 +1,17 @@
 import type {
+  Artifact,
   DailyUploadCount,
+  DeleteMissionResponse,
   FileMetadata,
   FileMetadataDetail,
   FileUploadResponse,
+  Mission,
+  MissionCreate,
+  MissionStatus,
+  MissionUpdate,
   PresignUploadResponse,
   UploadStats,
-} from "@vibe-coding-starter-kit/shared";
+} from "@opendronemap-photogrammetry-pipeline/shared";
 
 // Single-origin deploys (Vercel `services`: one project serving web + API) put
 // the API under /api on the same origin, so no NEXT_PUBLIC_API_URL is needed —
@@ -17,12 +23,13 @@ export const API_BASE =
   (process.env.NODE_ENV === "production" ? "/api" : "http://localhost:8000");
 
 type ApiClientRoute = {
-  method: "delete" | "get" | "post";
+  method: "delete" | "get" | "patch" | "post";
   path: string;
 };
 
 export const API_CLIENT_ROUTES = {
   health: { method: "get", path: "/health" },
+  config: { method: "get", path: "/config" },
   files: { method: "get", path: "/files" },
   fileStats: { method: "get", path: "/files/stats" },
   uploadActivity: { method: "get", path: "/files/stats/activity" },
@@ -41,7 +48,36 @@ export const API_CLIENT_ROUTES = {
   // payload ceiling no longer caps upload size.
   uploadPresign: { method: "post", path: "/upload/presign" },
   uploadVerify: { method: "post", path: "/upload/verify" },
+  // Missions — the primary entity. All five UI verbs plus the reconstruction
+  // run/status and the mission-scoped image ingest map to routes here.
+  missions: { method: "get", path: "/missions" },
+  missionCreate: { method: "post", path: "/missions" },
+  mission: { method: "get", path: "/missions/{mission_id}" },
+  missionUpdate: { method: "patch", path: "/missions/{mission_id}" },
+  missionDelete: { method: "delete", path: "/missions/{mission_id}" },
+  missionArtifacts: { method: "get", path: "/missions/{mission_id}/artifacts" },
+  missionRun: { method: "post", path: "/missions/{mission_id}/run" },
+  missionStatus: { method: "get", path: "/missions/{mission_id}/status" },
+  missionImagePresign: {
+    method: "post",
+    path: "/missions/{mission_id}/images/presign",
+  },
+  missionImageVerify: {
+    method: "post",
+    path: "/missions/{mission_id}/images/verify",
+  },
 } as const satisfies Record<string, ApiClientRoute>;
+
+/** Substitute a mission id into a `{mission_id}` route template. */
+function missionPath(
+  template: `${string}{mission_id}${string}`,
+  missionId: string,
+): string {
+  if (missionId.length === 0) {
+    throw new ApiError("Mission id is required", 400);
+  }
+  return template.replace("{mission_id}", encodeURIComponent(missionId));
+}
 
 /** Typed API error with HTTP status code for caller-side branching. */
 export class ApiError extends Error {
@@ -175,6 +211,12 @@ function isLegacyPathFallbackSafe(
 export async function getHealth() {
   return apiFetch<{ status: string; b2_connected: boolean }>(
     API_CLIENT_ROUTES.health.path
+  );
+}
+
+export async function getConfig() {
+  return apiFetch<{ bucket_name: string; region: string }>(
+    API_CLIENT_ROUTES.config.path
   );
 }
 
@@ -324,4 +366,87 @@ function putFileToStorage(
     }
     xhr.send(file);
   });
+}
+
+// --- Missions ---------------------------------------------------------------
+
+function jsonBody<T>(method: string, path: string, body: unknown): Promise<T> {
+  return apiFetch<T>(path, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function getMissions() {
+  return apiFetch<Mission[]>(API_CLIENT_ROUTES.missions.path);
+}
+
+export async function getMission(missionId: string) {
+  return apiFetch<Mission>(missionPath(API_CLIENT_ROUTES.mission.path, missionId));
+}
+
+export async function createMission(payload: MissionCreate) {
+  return jsonBody<Mission>(
+    API_CLIENT_ROUTES.missionCreate.method.toUpperCase(),
+    API_CLIENT_ROUTES.missionCreate.path,
+    payload,
+  );
+}
+
+export async function updateMission(missionId: string, payload: MissionUpdate) {
+  return jsonBody<Mission>(
+    API_CLIENT_ROUTES.missionUpdate.method.toUpperCase(),
+    missionPath(API_CLIENT_ROUTES.missionUpdate.path, missionId),
+    payload,
+  );
+}
+
+export async function deleteMission(missionId: string) {
+  return apiFetch<DeleteMissionResponse>(
+    missionPath(API_CLIENT_ROUTES.missionDelete.path, missionId),
+    { method: API_CLIENT_ROUTES.missionDelete.method.toUpperCase() },
+  );
+}
+
+export async function getMissionArtifacts(missionId: string) {
+  return apiFetch<Artifact[]>(
+    missionPath(API_CLIENT_ROUTES.missionArtifacts.path, missionId),
+  );
+}
+
+export async function runMission(missionId: string) {
+  return apiFetch<MissionStatus>(
+    missionPath(API_CLIENT_ROUTES.missionRun.path, missionId),
+    { method: API_CLIENT_ROUTES.missionRun.method.toUpperCase() },
+  );
+}
+
+export async function getMissionStatus(missionId: string) {
+  return apiFetch<MissionStatus>(
+    missionPath(API_CLIENT_ROUTES.missionStatus.path, missionId),
+  );
+}
+
+/**
+ * Upload one drone image directly to a mission's B2 prefix: presign (scoped to
+ * `missions/<id>/images/`), a direct browser→B2 PUT, then verify. Mirrors the
+ * generic uploadFile flow but targets the mission-scoped ingest routes.
+ */
+export async function uploadMissionImage(
+  missionId: string,
+  file: File,
+  onProgress?: (percent: number) => void,
+): Promise<FileUploadResponse> {
+  const presign = await jsonBody<PresignUploadResponse>(
+    API_CLIENT_ROUTES.missionImagePresign.method.toUpperCase(),
+    missionPath(API_CLIENT_ROUTES.missionImagePresign.path, missionId),
+    { filename: file.name, content_type: file.type, size_bytes: file.size },
+  );
+  await putFileToStorage(presign, file, onProgress);
+  return jsonBody<FileUploadResponse>(
+    API_CLIENT_ROUTES.missionImageVerify.method.toUpperCase(),
+    missionPath(API_CLIENT_ROUTES.missionImageVerify.path, missionId),
+    { key: presign.key },
+  );
 }

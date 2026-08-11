@@ -1,30 +1,23 @@
-<!-- last_verified: 2026-08-06 -->
-# Vibe Coding Starter Kit
+<!-- last_verified: 2026-08-11 -->
+# OpenDroneMap Photogrammetry Pipeline
 
-Stop wiring boilerplate and start building. This open-source starter kit gives vibe coders and AI coding agents a well-engineered foundation — a full-stack TypeScript + Python template with a pre-built dashboard UI, file upload system, and **[Backblaze B2](https://www.backblaze.com/sign-up/ai-cloud-storage?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-oss-start)** cloud storage already integrated. Save thousands of tokens on setup prompts, skip the "build me a dashboard from scratch" loop, and go straight to building your app's unique features.
+Ingest large sets of overlapping drone JPEGs into **[Backblaze B2](https://www.backblaze.com/sign-up/ai-cloud-storage?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-opendronemap-photogrammetry-pipeline)**, reconstruct them with **[OpenDroneMap](https://www.opendronemap.org/)** into publication-quality orthomosaics, DEMs, dense point clouds, and textured 3D meshes, and write those far-larger outputs back to B2 for GIS analysis and client delivery. It is a working sample for surveying firms, agricultural drone operators, and GIS teams — a full-stack TypeScript + Python app with B2 wired in through the S3-compatible API only.
 
-Explore the [Vibe Coding Starter Kit project page](https://backblazelabs.com/projects/vibe-coding-starter-kit/), the official [Backblaze B2 AI integrations and sample applications](https://www.backblaze.com/cloud-storage/b2-ai-integrations) directory, and the checked-in [local OpenAPI contract](docs/api/openapi.json).
+Its whole point is **extreme write amplification**: a modest input image set produces outputs several times larger, and B2 is the durable storage layer holding both. The reconstruction runs on local open-source software (OpenDroneMap via NodeODM) — **there is no second API key; B2 credentials only.**
+
+Explore the [OpenDroneMap Photogrammetry Pipeline project page](https://backblazelabs.com/projects/opendronemap-photogrammetry-pipeline/), the official [Backblaze B2 AI integrations and sample applications](https://www.backblaze.com/cloud-storage/b2-ai-integrations) directory, and the checked-in [local OpenAPI contract](docs/api/openapi.json).
 
 **What you get out of the box:**
-- Full-stack dashboard UI (Next.js 16 + React 19 + Tailwind v4 + shadcn/ui)
-- File upload with drag-and-drop, progress tracking, and metadata extraction
-- File browser with preview, download, and delete
-- FastAPI backend with strict layered architecture and structural tests
+- A **Mission** workflow: create → ingest drone images → run reconstruction → browse and download artifacts → delete, all backed by B2 (no database — missions are JSON manifests in the bucket)
+- Local **OpenDroneMap** engine via NodeODM (CPU, containerized) — orthomosaic, DEM, point cloud, and textured mesh
+- Write-amplification analytics computed from real bucket sizes (output bytes ÷ input bytes)
+- A mission-scoped artifact explorer **and** the starter's full-bucket file browser
+- FastAPI backend with strict layered architecture, structural tests, and an S3-only B2 boundary
 - Agent-optimized docs — your AI coding agent can read the repo and start contributing immediately
-
-## What it looks like
-
-**Dashboard** — stats, upload activity, and recent uploads at a glance:
-
-![Dashboard view showing stat cards, upload activity chart, and recent uploads table](docs/images/b2-starterkit-dashboard1.png)
-
-**File browser** — tree view with preview, download, and delete:
-
-![File browser view showing a tree of files with hover actions](docs/images/b2-starterkit-fileview2.png)
 
 ## Quick Start
 
-You need: Node.js >= 20, pnpm >= 9, Python >= 3.12, and a free **[Backblaze B2 account](https://www.backblaze.com/sign-up/ai-cloud-storage?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-oss-start)**.
+You need: Node.js >= 20, pnpm >= 9, Python >= 3.12, **Docker** (for the local NodeODM engine), and a free **[Backblaze B2 account](https://www.backblaze.com/sign-up/ai-cloud-storage?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-opendronemap-photogrammetry-pipeline)**.
 
 ### Supported local environments
 
@@ -32,37 +25,9 @@ Local scripts are supported on macOS, Linux, and WSL2. Native Windows is not
 supported yet because the dev scripts use POSIX shell syntax and
 `services/api/.venv/bin/*` paths; use WSL2 on Windows.
 
-Cloud or sandboxed coding-agent environments also need permission for dependency
-downloads during `pnpm run setup`. Running the app or Playwright E2E requires
-localhost server binding for the web server on port 3000 and the API on
-8000-8009, plus permission to launch the Playwright Chromium browser. If a
-sandbox denies binding, `pnpm run doctor` and `scripts/pick-port.mjs` report
-`EPERM`/`EACCES` as a permissions issue instead of a busy port. A host without
-IPv6 (many containers) is not treated as a failure — the IPv4 probe decides.
-
-### Start a new project
-
-**Option 1: GitHub Template (recommended)**
-
-Click the green **"Use this template"** button at the top of this repo, name your project, then:
-
-```bash
-git clone https://github.com/yourorg/my-cool-app.git
-cd my-cool-app
-```
-
-**Option 2: Clone and reinitialize**
-
-```bash
-git clone https://github.com/backblaze-b2-samples/vibe-coding-starter-kit.git my-cool-app
-cd my-cool-app
-rm -rf .git
-git init
-git add .
-git commit -m "Initial commit from vibe-coding-starter-kit"
-```
-
-Either way you get a clean project with no upstream history — ready to push to your own repo and point your agent at it.
+The OpenDroneMap engine (NodeODM) is CPU-based and containerized — **no GPU is
+required**. Running a full reconstruction needs Docker running locally and
+enough disk for the intermediate and output artifacts.
 
 ### Setup
 
@@ -85,120 +50,106 @@ existing `.env`.
 
 **2. Add your B2 credentials**
 
-Open `.env` in your editor and keep it visible. Then head to the [Backblaze B2 dashboard](https://secure.backblaze.com/b2_buckets.htm?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-oss-start) and:
+Open `.env` and head to the [Backblaze B2 dashboard](https://secure.backblaze.com/b2_buckets.htm?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-opendronemap-photogrammetry-pipeline):
 
-1. **Create a bucket.** B2 will show two values — paste each into `.env`:
-   - **Bucket Unique Name** → `B2_BUCKET_NAME`
-   - **Endpoint** → `B2_ENDPOINT`
-2. **Create an application key** with `Read and Write` permission. B2 will show two values — paste each into `.env`:
-   - **keyID** → `B2_KEY_ID`
+1. **Create a bucket** → paste its unique name into `B2_BUCKET_NAME`, and set
+   `B2_REGION` to the bucket's region (e.g. `us-west-004`). The S3 endpoint is
+   **derived** from the region (`https://s3.<region>.backblazeb2.com`), so there
+   is no endpoint URL to keep in sync.
+2. **Create an application key** with `Read and Write` permission:
+   - **keyID** → `B2_APPLICATION_KEY_ID`
    - **applicationKey** → `B2_APPLICATION_KEY` *(only shown once — paste it now)*
 
 > Want a walkthrough? See the docs for [creating a bucket](https://www.backblaze.com/docs/cloud-storage-create-and-manage-buckets) and [creating app keys](https://www.backblaze.com/docs/cloud-storage-create-and-manage-app-keys).
 
-**3. Run it**
+**3. Start the OpenDroneMap engine**
+
+```bash
+docker compose up -d
+```
+
+This starts NodeODM (the OpenDroneMap REST API) on `http://localhost:3001`. The
+backend reaches it via `ODM_NODE_URL` (default `http://localhost:3001`). It is a
+CPU image — no GPU required.
+
+**4. (Optional) Seed a demo mission**
+
+```bash
+services/api/.venv/bin/python services/api/scripts/seed_mission.py
+```
+
+Downloads a small public/CC-licensed OpenDroneMap sample image set, uploads it
+to B2 under a demo mission prefix, and writes the mission manifest — so a fresh
+clone has one runnable mission. See the script header for the dataset and its
+license.
+
+**5. Run it**
 
 ```bash
 pnpm dev
 ```
 
-That's it. Frontend at `localhost:3000`, API at `localhost:8000`. Upload a file and see it working. Interactive API docs (Swagger UI) are at `localhost:8000/docs`, with ReDoc at `/redoc`.
+Frontend at `localhost:3000`, API at `localhost:8000`. Create a mission, upload
+drone images, and run the reconstruction. Interactive API docs (Swagger UI) are
+at `localhost:8000/docs`, with ReDoc at `/redoc`.
 
-`pnpm dev` runs the preflight check first — it catches the common setup gotchas (wrong Node/Python version, missing venv, missing or placeholder `.env`, ports already taken) and tells you exactly how to fix each one. Run it standalone any time with `pnpm run doctor`.
+`pnpm dev` runs the preflight check first — it catches the common setup gotchas
+(wrong Node/Python version, missing venv, missing or placeholder `.env`, ports
+already taken) and tells you how to fix each one. Run it any time with
+`pnpm run doctor`.
 
 ## When to use
 
-Use this repository as a template or sample implementation when you want to
-clone or fork a working file-management dashboard, connect it to your own B2
-bucket, and then rebrand and extend it for your application. It provides
-production-minded engineering controls—including strict architecture,
-contract checks, tests, linting, and deployment runbooks—so you can begin with
-a dependable scaffold instead of a blank prototype.
+Use this repository when you need a working example of a **high-volume,
+write-heavy B2 workload**: turning drone imagery into large geospatial
+deliverables and keeping both inputs and outputs durably in object storage,
+accessed exclusively through the S3-compatible API. It is a good starting point
+for surveying, agriculture, and GIS teams who want B2 as the storage layer for a
+photogrammetry pipeline, and a good reference for the Mission CRUD-plus-run
+pattern over B2 JSON manifests.
 
 ## When not to use
 
 Do not choose this repository expecting a complete hosted SaaS product or a
 drop-in production service. It does not provide managed hosting, user accounts,
-authentication, tenant isolation, billing, or on-call operations. Before using
-an adapted application in production, you own its product-specific security,
-operations, capacity, compliance, and support decisions.
+authentication, tenant isolation, billing, or on-call operations. The
+reconstruction engine is local OpenDroneMap; this is not a managed
+photogrammetry service. Before using an adapted application in production, you
+own its product-specific security, operations, capacity, compliance, and support
+decisions.
 
 ## Building Your App
 
-When you adapt this kit for a new app, keep the shared scaffolding and only swap out what's app-specific:
+This app is built on the Backblaze B2 vibe-coding starter kit. When you adapt it,
+keep the shared scaffolding and only swap out what's app-specific:
 
 - **Keep** the UI kit (`apps/web/src/components/ui/` + design tokens in `globals.css` + `/design`).
-- **Keep** the File Explorer (`/files`) and Upload (`/upload`) pages and their sidebar nav entries — they're the reusable B2-backed surface.
-- **Adapt** the Dashboard (`/`) to your use case — replace the default stats, chart, and recent uploads with metrics that reflect what your app actually does.
-- **Rebrand** by editing a single file: `apps/web/src/lib/app-config.ts` holds the app name and description (`APP_NAME`, `APP_DESCRIPTION`). Changing them there updates the page title, sidebar, and breadcrumb everywhere — no other files to touch.
+- **Keep** the full-bucket File Explorer (`/files`) and generic Upload (`/upload`) pages — they're the reusable B2-backed surface.
+- **Study** the Missions feature (`/missions`) as the model for a primary entity persisted as B2 JSON manifests with a folder-scoped artifact explorer.
+- **Rebrand** by editing a single file: `apps/web/src/lib/app-config.ts` holds the app name and description (`APP_NAME`, `APP_DESCRIPTION`).
 
 Full contract and rationale: [AGENTS.md §2 — Building on This Starter Kit](AGENTS.md#2-building-on-this-starter-kit).
 
-## Agent-First Architecture
-
-This repo is optimized for coding agents. Use the template, point your agent at it, and start building.
-
-The structure follows the principle that **repository knowledge is the system of record**. Anything an agent can't access in-context doesn't exist — so everything it needs to reason about the codebase is versioned, co-located, and discoverable from the repo itself.
-
-### How it works
-
-**[AGENTS.md](AGENTS.md) is the single source of truth for all coding agents.** Its bounded, agent-sized entry point gives agents the repository layout, architectural invariants, commands, conventions, and pointers to deeper docs. Agent-specific files (CLAUDE.md, GEMINI.md, Copilot instructions, etc.) are thin pointers back to AGENTS.md.
-
-**Architecture is enforced mechanically, not by convention.** Layering rules, import boundaries, backend application Python file-size limits, and SDK containment are verified by structural tests and lints that run on every change. When rules are enforceable by code, agents follow them reliably.
-
-**The knowledge base is structured for progressive disclosure:**
-
-```
-AGENTS.md              Single source of truth — layout, invariants, commands, conventions
-ARCHITECTURE.md        System layout, layering rules, data flows
-docs/
-  features/            Feature docs (inputs, outputs, flows, edge cases)
-  app-workflows.md     User journeys
-  dev-workflows.md     Engineering workflows and testing
-  SECURITY.md          Security principles
-  RELIABILITY.md       Reliability expectations
-  exec-plans/          Execution plans and tech debt tracker
-```
-
-### Key design decisions
-
-| Principle | Implementation |
-|-----------|---------------|
-| Give agents a single source of truth | AGENTS.md — bounded layout, invariants, commands, conventions |
-| Enforce invariants mechanically | Structural tests + ruff + ESLint verify boundaries |
-| DRY documentation | Each fact lives in one place; no redundant files to drift |
-| Strict layered architecture | `types -> config -> repo -> service -> runtime`, enforced by tests |
-| Prefer boring, composable libraries | stdlib logging over frameworks, Pydantic over ad-hoc validation |
-| Contain external SDKs | `boto3` only in `repo/` layer — verified by structural test |
-| Keep files agent-sized | 300-line limit per file, enforced by test |
-| Docs updated with code | Same-PR requirement prevents documentation rot |
-| Structured observability | JSON logging, `/metrics` endpoint, request tracing |
-
-This approach draws from [OpenAI's experience building with Codex](https://openai.com/index/harness-engineering/): agents work best in environments with strict boundaries, predictable structure, and progressive context disclosure.
-
 ## Core Features
 
-- [File Upload](docs/features/file-upload.md) — drag-and-drop upload with real-time progress
-- [File Browser](docs/features/file-browser.md) — list, preview, download, delete files
-- [Dashboard](docs/features/dashboard.md) — stats cards, upload chart, recent uploads
-- [Metadata Extraction](docs/features/metadata-extraction.md) — image dimensions, EXIF, PDF info, checksums
-- [Design System](docs/design-system.md) — tokens, primitives, AI elements, the blaze generating loader, and inline `ErrorState` / `EmptyState` patterns. Live preview at `/design`.
-- Inline error handling — fetch failures surface *what's wrong* (API offline, 401, 5xx) and offer a Retry, instead of silently rendering empty state.
-- Single-source config — one `.env` at the repo root powers both API and web app, validated at startup so misconfig fails fast with a readable message.
-- Centralized data layer — every fetch goes through TanStack Query hooks in `apps/web/src/lib/queries.ts`; cache invalidation is one call after a mutation.
-- Checked local API contract — [`docs/api/openapi.json`](docs/api/openapi.json) plus `pnpm contract:check` catch FastAPI/client route drift; it describes the template API you run, not a hosted public endpoint.
-- Structural tests — verify layering rules, import boundaries, SDK containment, and backend application Python file-size limits
-- Structured JSON logging — every request traced with `request_id` and timing
-- `/health` endpoint — B2 connectivity check
-- `/metrics` endpoint — Prometheus-format counters (request count, latency, uploads)
-- `/docs` + `/redoc` — auto-generated interactive API docs (toggle off in prod with `ENABLE_DOCS=false`)
-- Per-IP rate limiting and magic-byte upload validation — see [SECURITY.md](docs/SECURITY.md)
+- [Missions](docs/features/missions.md) — the primary entity: create, read, edit, delete, and **run** a photogrammetry job. Persisted as a JSON manifest in B2.
+- [Reconstruction](docs/features/reconstruction.md) — the marquee action: OpenDroneMap (NodeODM) produces orthomosaic, DEM, point cloud, and textured mesh; outputs are written back to B2 with managed multipart transfer.
+- [Mission ingest](docs/features/file-upload.md) — group and upload overlapping drone JPEGs into a mission's B2 prefix via presigned direct-to-B2 PUT.
+- [File Browser](docs/features/file-browser.md) — the kept full-bucket explorer: list, preview, download, delete every object.
+- [Dashboard](docs/features/dashboard.md) — write-amplification metrics and recent missions.
+- [Artifact metadata](docs/features/metadata-extraction.md) — geospatial artifact classification (orthomosaic / DEM / point cloud / mesh) plus the generic object detail extraction.
+- [Design System](docs/design-system.md) — tokens, primitives, and inline `ErrorState` / `EmptyState` patterns. Live preview at `/design`.
+
+- Checked local API contract — [`docs/api/openapi.json`](docs/api/openapi.json) plus `pnpm contract:check` catch FastAPI/client route drift.
+- Structural tests — verify layering rules, import boundaries, SDK containment (`boto3` and `pyodm` only in `repo/`), and the 300-line file limit.
+- Structured JSON logging, `/health` (B2 connectivity), `/metrics` (Prometheus), and per-IP rate limiting — see [SECURITY.md](docs/SECURITY.md).
 
 ## Tech Stack
 
 - TypeScript, Next.js 16, React 19, Tailwind v4, shadcn/ui, Recharts
 - TanStack Query — caching, dedup, retry, stale-while-revalidate for every fetch
-- Python 3.12+, FastAPI, boto3, Pydantic v2, Pillow, PyPDF2
+- Python 3.12+, FastAPI, boto3, Pydantic v2, Pillow
+- **OpenDroneMap** via [`pyodm`](https://github.com/OpenDroneMap/PyODM) + the NodeODM REST API (local, CPU, containerized)
 - Backblaze B2 (S3-compatible object storage)
 - pnpm workspaces (monorepo)
 
@@ -225,57 +176,29 @@ This approach draws from [OpenAI's experience building with Codex](https://opena
 | `pnpm test:api` | Run backend tests |
 | `pnpm test:live:b2` | Opt-in real B2 connectivity test; requires `RUN_LIVE_B2_TESTS=1` and non-production credentials |
 | `pnpm check:structure` | Verify layering rules |
-| `pnpm test:e2e` | Playwright E2E smoke tests (run `pnpm --filter @vibe-coding-starter-kit/web exec playwright install chromium` once first) |
+| `pnpm test:e2e` | Playwright E2E smoke tests (run `pnpm --filter @opendronemap-photogrammetry-pipeline/web exec playwright install chromium` once first) |
 
 Run `pnpm run setup` once before local development, and rerun it after pulling
-dependency changes. It installs workspace dependencies from `pnpm-lock.yaml`
-and API dependencies from `services/api/requirements.lock`. If you add a Node
-dependency yourself, run `pnpm install` to refresh `pnpm-lock.yaml`; for an API
-dependency, follow the reviewed refresh workflow in
-[docs/dev-workflows.md](docs/dev-workflows.md#python-dependency-updates). Run
-`pnpm verify` before opening a PR; it needs
-`services/api/.venv` from setup. Run `pnpm verify:full` when you can start the
-local app stack and browser tests: `.env` must contain real B2 values, local
-server binding must be permitted, Playwright's Chromium browser must be
-installed, and port 3000 must be free (or already serving this app). Playwright
-waits on `http://localhost:3000`,
-but `next dev` falls back to the next free port when 3000 is taken — so an
-unrelated process on 3000 makes the E2E run time out. The API starts at
-`localhost:8000` or the next free port chosen by `scripts/dev.sh`.
-
-`pnpm verify` needs neither B2 credentials nor a browser. For parallel agents,
-use one Git worktree per verification run as documented in [the verification
-workflow](docs/dev-workflows.md#non-live-verification). That page also covers
-normal timing, slow-run recovery, and installing the optional local pre-commit
-hooks.
+dependency changes. `pnpm verify` needs neither B2 credentials, a NodeODM
+engine, nor a browser — unit tests mock `pyodm` and B2. Run it before opening a
+PR. For an API dependency change, follow the reviewed refresh workflow in
+[docs/dev-workflows.md](docs/dev-workflows.md#python-dependency-updates).
 
 ## Deploying to Vercel
 
-This starter deploys to Vercel as **one project** using Vercel
-[Services](https://vercel.com/docs/services): the Next.js web app and the
-FastAPI API build from the same repo and share a single origin — the web app at
-`/` and the API under `/api`. One click, one project, **no CORS and no wiring
-two URLs together**.
+The web app and FastAPI API deploy to Vercel as **one project** (web at `/`, API
+under `/api`) — one origin, no CORS. Note that the reconstruction step needs a
+reachable NodeODM engine (`ODM_NODE_URL`); Vercel Functions cannot run the
+containerized engine, so a hosted deploy points at a NodeODM you host elsewhere,
+while the mission CRUD, ingest, and artifact browsing work as-is.
 
-[![Deploy to Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbackblaze-b2-samples%2Fvibe-coding-starter-kit&project-name=vcsk&env=B2_KEY_ID,B2_APPLICATION_KEY,B2_ENDPOINT,B2_BUCKET_NAME&envDescription=B2%20credentials%20and%20bucket&envLink=https%3A%2F%2Fgithub.com%2Fbackblaze-b2-samples%2Fvibe-coding-starter-kit%2Fblob%2Fmain%2Finfra%2Fvercel%2FREADME.md)
+[![Deploy to Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbackblaze-b2-samples%2Fopendronemap-photogrammetry-pipeline&project-name=opendronemap-photogrammetry-pipeline&env=B2_APPLICATION_KEY_ID,B2_APPLICATION_KEY,B2_REGION,B2_BUCKET_NAME&envDescription=B2%20credentials%20and%20bucket&envLink=https%3A%2F%2Fgithub.com%2Fbackblaze-b2-samples%2Fopendronemap-photogrammetry-pipeline%2Fblob%2Fmain%2Finfra%2Fvercel%2FREADME.md)
 
-Set the B2 credentials and bucket. Uploads go **directly from the browser to
-B2** (presigned PUT), so Vercel's 4.5 MB Function payload limit doesn't apply
-and the starter's 100 MB default stays — one caveat: the bucket must allow your
-deploy origin in its CORS (see the
-[Vercel delivery contract](infra/vercel/README.md)). The web app reaches the API
-at the same-origin `/api` automatically, so **no `NEXT_PUBLIC_API_URL` is
-needed**; the repo-root `vercel.json` declares the `web` and `api` services and
-routes `/api/*` to FastAPI (which serves its native `/health`, `/files`, … paths
-— the Vercel-only `services/api/index.py` strips the `/api` prefix).
-
-The button clones the repo into your account as a quick preview. For the full
-variable classification, the two-separate-Projects alternative, security
-controls, preview/production process, `/health` verification, and rollback,
-follow the [Vercel delivery contract](infra/vercel/README.md). The API is
-unauthenticated and bucket-wide, so use a dedicated B2 bucket/prefix and key for
-any preview. Deploying is a human-approved action — nothing here performs one
-for you.
+Set the B2 credentials, region, and bucket. Uploads go **directly from the
+browser to B2** (presigned PUT), so Vercel's 4.5 MB Function payload limit
+doesn't apply. For the full variable classification, security controls, and
+rollback, follow the [Vercel delivery contract](infra/vercel/README.md).
+Deploying is a human-approved action — nothing here performs one for you.
 
 ## Documentation Map
 
@@ -283,66 +206,63 @@ for you.
 |-----|---------|
 | [AGENTS.md](AGENTS.md) | Agent table of contents — start here |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | System layout, layering, data flows |
-| [docs/features/](docs/features/) | Feature docs (upload, browser, dashboard, metadata) |
-| [docs/design-system.md](docs/design-system.md) | Design tokens, primitives, AI elements, loader, error/empty states |
+| [docs/features/](docs/features/) | Feature docs (missions, reconstruction, ingest, browser, dashboard, metadata) |
 | [docs/app-workflows.md](docs/app-workflows.md) | User journeys |
 | [docs/dev-workflows.md](docs/dev-workflows.md) | Engineering workflows and testing |
 | [docs/SECURITY.md](docs/SECURITY.md) | Security principles |
 | [docs/RELIABILITY.md](docs/RELIABILITY.md) | Reliability expectations |
-| [docs/api/openapi.json](docs/api/openapi.json) | Checked contract for the template's local FastAPI API |
+| [docs/api/openapi.json](docs/api/openapi.json) | Checked contract for the local FastAPI API |
 | [infra/vercel/README.md](infra/vercel/README.md) | Vercel deployment contract |
 | [docs/exec-plans/](docs/exec-plans/) | Execution plans and tech debt tracker |
 
 ## FAQ
 
-**What is the Vibe Coding Starter Kit?**
-An open-source, full-stack template (Next.js 16 + FastAPI) with a pre-built dashboard UI, drag-and-drop file upload, and file browser, with [Backblaze B2](https://www.backblaze.com/cloud-storage) cloud storage already integrated. You clone it, connect it to your own B2 bucket, then rebrand and extend it for your app.
+**What is the OpenDroneMap Photogrammetry Pipeline?**
+A full-stack sample app (Next.js 16 + FastAPI) that ingests drone imagery into Backblaze B2, reconstructs it with OpenDroneMap into orthomosaics, DEMs, point clouds, and 3D meshes, and stores those outputs back in B2. It demonstrates a high-volume, write-heavy B2 workload accessed only through the S3-compatible API.
+
+**Do I need a GPU?**
+No. OpenDroneMap's pipeline (OpenSfM / OpenMVS) is CPU-based and runs in the containerized NodeODM engine. A GPU is never required.
+
+**Does it need a second API key or a cloud AI provider?**
+No. The reconstruction engine is local open-source OpenDroneMap. The only credentials are your Backblaze B2 application key.
+
+**Where does mission data live? Is there a database?**
+There is no database. Each mission is a JSON manifest in B2 at `missions/<id>/mission.json`; inputs live under `missions/<id>/images/` and generated artifacts under `missions/<id>/outputs/`.
 
 **Is it free?**
-Yes. The code is MIT-licensed (see [License](#license)), and Backblaze B2 offers a free account to get started.
+The code is MIT-licensed (see [License](#license)). Backblaze B2 offers a free account to get started; you pay for storage of the (often large) reconstruction outputs. OpenDroneMap is free and open-source.
 
 **Can I use it in production?**
-It's a template/sample Backblaze maintains to help developers get started with B2. Production use is possible with caution and requires your own validation — you own the product-specific security, operations, capacity, compliance, and support decisions for anything you adapt, and the repository software carries no SLA. See [When not to use](#when-not-to-use) and [Maintenance and support](#maintenance-and-support).
+It's a sample Backblaze maintains to help developers get started with B2. Production use is possible with caution and requires your own validation — see [When not to use](#when-not-to-use) and [Maintenance and support](#maintenance-and-support).
 
-**Does it include authentication, user accounts, or multi-tenant isolation?**
-No. It does not provide managed hosting, user accounts, authentication, tenant isolation, billing, or on-call operations. Add whatever your application requires on top of the scaffold.
+**Does it include authentication or multi-tenant isolation?**
+No. Add whatever your application requires on top of the scaffold. The API is unauthenticated and bucket-wide by design.
 
 **Do I have to use Backblaze B2?**
-It integrates Backblaze B2 through the S3-compatible API, and B2 is the storage the kit is built around. You supply your own B2 bucket and application key during setup.
-
-**Is it really built for AI coding agents?**
-Yes. [AGENTS.md](AGENTS.md) is the single source of truth for coding agents, architectural boundaries are enforced mechanically by structural tests and lints (not by convention), and the docs use progressive disclosure — so an agent can read the repo and start contributing immediately.
-
-**What's the tech stack?**
-Frontend: TypeScript, Next.js 16, React 19, Tailwind v4, shadcn/ui, TanStack Query. Backend: Python 3.12+, FastAPI, boto3, Pydantic v2. Storage: Backblaze B2 (S3-compatible). See [Tech Stack](#tech-stack).
-
-**How do I rebrand it for my own app?**
-Edit a single file — `apps/web/src/lib/app-config.ts` (`APP_NAME`, `APP_DESCRIPTION`) — and the page title, sidebar, and breadcrumb update everywhere. See [Building Your App](#building-your-app).
-
-**How do I deploy it?**
-It deploys to Vercel as a single project — the web app and FastAPI API build from the same repo and share one origin (web at `/`, API under `/api`), so there's no CORS or second URL to wire up. A Railway path is also documented. Deploying is always a human-approved action — see [Deploying to Vercel](#deploying-to-vercel).
+It integrates Backblaze B2 through the S3-compatible API, and B2 is the storage the app is built around. You supply your own bucket and application key during setup.
 
 **Does it work on Windows?**
-Local scripts are supported on macOS, Linux, and WSL2. Native Windows is not supported yet — use WSL2 on Windows.
+Local scripts are supported on macOS, Linux, and WSL2. Native Windows is not supported yet — use WSL2.
 
 **Where do I get help or report bugs?**
-Report repository defects and feature requests through [GitHub Issues](https://github.com/backblaze-b2-samples/vibe-coding-starter-kit/issues). For B2 account, billing, service, or API help, use [Backblaze Support](https://www.backblaze.com/help).
+Report repository defects and feature requests through [GitHub Issues](https://github.com/backblaze-b2-samples/opendronemap-photogrammetry-pipeline/issues). For B2 account, billing, service, or API help, use [Backblaze Support](https://www.backblaze.com/help).
 
 ## Maintenance and support
 
-Backblaze maintains this open-source template/sample to help developers get
-started with B2. Production use is possible with caution and requires your own
-validation. Report repository defects and feature requests through
-[GitHub Issues](https://github.com/backblaze-b2-samples/vibe-coding-starter-kit/issues);
+Backblaze maintains this open-source sample to help developers get started with
+B2. Production use is possible with caution and requires your own validation.
+Report repository defects and feature requests through
+[GitHub Issues](https://github.com/backblaze-b2-samples/opendronemap-photogrammetry-pipeline/issues);
 for B2 account, billing, service, or API help, use
-[Backblaze Support](https://www.backblaze.com/help). This template/sample is
-not covered by the Backblaze service level agreement, and no SLA is provided
-for the repository software; any B2 service or support commitments are governed
+[Backblaze Support](https://www.backblaze.com/help). This sample is not covered
+by the Backblaze service level agreement, and no SLA is provided for the
+repository software; any B2 service or support commitments are governed
 separately by the applicable Backblaze terms and support plan.
 
 ## Contributing
 
-Start with [AGENTS.md](AGENTS.md). It's the map — everything else is discoverable from there. For local commit hooks, follow [the pre-commit workflow](docs/dev-workflows.md#pre-commit).
+Start with [AGENTS.md](AGENTS.md). It's the map — everything else is discoverable
+from there. For local commit hooks, follow [the pre-commit workflow](docs/dev-workflows.md#pre-commit).
 
 ## License
 

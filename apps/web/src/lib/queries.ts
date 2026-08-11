@@ -8,19 +8,33 @@ import {
 } from "@tanstack/react-query";
 import {
   ApiError,
+  createMission,
   deleteFile,
+  getConfig,
+  deleteMission,
   getDownloadUrl,
   getFileDetail,
   getFiles,
   getFileStats,
   getHealth,
+  getMission,
+  getMissionArtifacts,
+  getMissions,
+  getMissionStatus,
   getPreviewUrl,
   getUploadActivity,
+  runMission,
+  updateMission,
 } from "@/lib/api-client";
 import type {
+  Artifact,
   FileMetadata,
   FileMetadataDetail,
-} from "@vibe-coding-starter-kit/shared";
+  Mission,
+  MissionCreate,
+  MissionStatus,
+  MissionUpdate,
+} from "@opendronemap-photogrammetry-pipeline/shared";
 
 // Single source of truth for query keys. Keep these tightly scoped so that
 // invalidating "files" doesn't blow away unrelated caches, and so an IDE
@@ -35,6 +49,11 @@ export const qk = {
   preview: (key: string) => [...qk.all, "preview", key] as const,
   detail: (key: string) => [...qk.all, "detail", key] as const,
   health: () => [...qk.all, "health"] as const,
+  missions: () => [...qk.all, "missions"] as const,
+  mission: (id: string) => [...qk.all, "missions", id] as const,
+  missionStatus: (id: string) => [...qk.all, "missions", id, "status"] as const,
+  missionArtifacts: (id: string) =>
+    [...qk.all, "missions", id, "artifacts"] as const,
 };
 
 export type Health = Awaited<ReturnType<typeof getHealth>>;
@@ -166,6 +185,94 @@ export function useDeleteFile() {
       // activity) against the server in the background.
       dropDeletedFileFromCache(qc, fileKey);
       qc.invalidateQueries({ queryKey: qk.all });
+    },
+  });
+}
+
+// --- Missions ---------------------------------------------------------------
+
+export function useConfig() {
+  return useQuery({
+    queryKey: [...qk.all, "config"] as const,
+    queryFn: getConfig,
+    staleTime: Infinity,
+  });
+}
+
+export function useMissions() {
+  return useQuery<Mission[], ApiError>({
+    queryKey: qk.missions(),
+    queryFn: getMissions,
+  });
+}
+
+export function useMission(id: string | undefined) {
+  return useQuery<Mission, ApiError>({
+    queryKey: qk.mission(id ?? ""),
+    queryFn: () => getMission(id as string),
+    enabled: !!id,
+  });
+}
+
+/**
+ * Poll a mission's reconstruction status. While the run is queued/running the
+ * query self-refetches every 2s so the detail page shows live progress; once it
+ * reaches a terminal state polling stops.
+ */
+export function useMissionStatus(id: string | undefined, enabled = true) {
+  return useQuery<MissionStatus, ApiError>({
+    queryKey: qk.missionStatus(id ?? ""),
+    queryFn: () => getMissionStatus(id as string),
+    enabled: enabled && !!id,
+    refetchInterval: (query) => {
+      const state = query.state.data?.state;
+      return state === "running" || state === "queued" ? 2000 : false;
+    },
+  });
+}
+
+export function useMissionArtifacts(id: string | undefined) {
+  return useQuery<Artifact[], ApiError>({
+    queryKey: qk.missionArtifacts(id ?? ""),
+    queryFn: () => getMissionArtifacts(id as string),
+    enabled: !!id,
+  });
+}
+
+export function useCreateMission() {
+  const qc = useQueryClient();
+  return useMutation<Mission, ApiError, MissionCreate>({
+    mutationFn: (payload) => createMission(payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.missions() }),
+  });
+}
+
+export function useUpdateMission(id: string) {
+  const qc = useQueryClient();
+  return useMutation<Mission, ApiError, MissionUpdate>({
+    mutationFn: (payload) => updateMission(id, payload),
+    onSuccess: (mission) => {
+      qc.setQueryData(qk.mission(id), mission);
+      qc.invalidateQueries({ queryKey: qk.missions() });
+    },
+  });
+}
+
+export function useDeleteMission() {
+  const qc = useQueryClient();
+  return useMutation<unknown, ApiError, string>({
+    mutationFn: (id) => deleteMission(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.missions() }),
+  });
+}
+
+export function useRunMission(id: string) {
+  const qc = useQueryClient();
+  return useMutation<MissionStatus, ApiError, void>({
+    mutationFn: () => runMission(id),
+    onSuccess: (status) => {
+      qc.setQueryData(qk.missionStatus(id), status);
+      qc.invalidateQueries({ queryKey: qk.mission(id) });
     },
   });
 }

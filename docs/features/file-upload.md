@@ -1,5 +1,5 @@
-<!-- last_verified: 2026-08-06 -->
-# Feature: File Upload
+<!-- last_verified: 2026-08-11 -->
+# Feature: File Upload (generic + mission ingest)
 
 ## Purpose
 Upload files from the browser **directly to Backblaze B2** with real-time
@@ -8,9 +8,20 @@ capped by Vercel's ~4.5 MB Function payload limit — the same flow handles up t
 `max_file_size` (100 MB default) on local, Railway, and Vercel alike, and is a
 direct showcase of B2 as the storage layer.
 
+The same presigned-PUT mechanism powers two entry points: the generic
+`/upload` page (writes to `uploads/`) and **mission ingest** — dropping drone
+JPEGs into a mission, which writes to that mission's `missions/<id>/images/`
+prefix (see below).
+
+## Mission-scoped ingest
+- UI: the **Ingest drone images** card on `/missions/[id]` (`components/missions/mission-image-uploader.tsx`), reusing the same `Dropzone`
+- API: `POST /missions/{mission_id}/images/presign`, `POST /missions/{mission_id}/images/verify`
+- The upload service takes an optional `key_prefix` (default `uploads/`); the mission routes pass `missions/<id>/images/`, so the API still mints the final key and every validation below applies unchanged. Verify rejects a key outside the mission's images prefix with 400.
+- `uploadMissionImage()` in `apps/web/src/lib/api-client.ts` runs presign → direct PUT → verify per file, then invalidates the mission's stats + artifacts queries.
+
 ## Used By
-- UI: `/upload` page, upload form component
-- API: `POST /upload/presign`, `POST /upload/verify`
+- UI: `/upload` page + the mission ingest card on `/missions/[id]`
+- API: `POST /upload/presign`, `POST /upload/verify`, `POST /missions/{mission_id}/images/presign`, `POST /missions/{mission_id}/images/verify`
 
 ## Core Functions
 - `apps/web/src/lib/upload-queue-context.tsx` — `UploadQueueProvider` / `useUploadQueue()`: the app-wide upload queue. Mounted in the root layout, so an upload survives navigation away from `/upload`
@@ -118,6 +129,8 @@ See [infra/vercel/README.md](../../infra/vercel/README.md) for the deploy-time d
 - Pass criteria: focused tests and `pnpm verify` green; explain any skipped `pnpm verify:full` prerequisites
 
 ## Related Docs
+- [Missions](missions.md)
+- [Reconstruction](reconstruction.md)
 - [ARCHITECTURE.md](../../ARCHITECTURE.md)
 - [Metadata Extraction](metadata-extraction.md)
 - [App Workflows](../app-workflows.md)

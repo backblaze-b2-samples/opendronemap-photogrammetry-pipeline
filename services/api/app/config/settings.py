@@ -2,11 +2,25 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    b2_endpoint: str = "https://s3.us-west-004.backblazeb2.com"
-    b2_key_id: str = ""
+    # Standardized B2 credentials (see .env.example) — S3-compatible API only.
+    # The S3 endpoint is DERIVED from the region (see the `b2_endpoint`
+    # property), so there is one region string and no hand-typed endpoint URL
+    # that can drift from it.
+    b2_application_key_id: str = ""
     b2_application_key: str = ""
     b2_bucket_name: str = ""
-    b2_public_url: str = ""
+    # No region default: the endpoint is derived from it, so a baked-in region
+    # would be a hardcoded endpoint. Set B2_REGION in .env (e.g. us-west-004).
+    b2_region: str = ""
+    # Optional: only used to build public object URLs for a public bucket. The
+    # app runs without it (private buckets serve every artifact via presigned
+    # URLs).
+    b2_public_url_base: str = ""
+
+    # OpenDroneMap engine (NodeODM REST API). Not a B2 credential — this points
+    # the reconstruction pipeline at the local NodeODM container started by the
+    # root docker-compose.yml. CPU-only engine; no GPU required.
+    odm_node_url: str = "http://localhost:3001"
 
     api_port: int = 8000
     # Interactive API docs (/docs, /redoc, /openapi.json). On by default for
@@ -70,6 +84,16 @@ class Settings(BaseSettings):
     download_count_file: str = ".data/download_count.json"
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+
+    @property
+    def b2_endpoint(self) -> str:
+        """S3-compatible endpoint derived from the region.
+
+        The boto3 client in repo/b2_client.py builds its endpoint from this, so
+        the region is the single source of truth and no endpoint URL is
+        hardcoded anywhere.
+        """
+        return f"https://s3.{self.b2_region}.backblazeb2.com"
 
     @property
     def cors_origins(self) -> list[str]:

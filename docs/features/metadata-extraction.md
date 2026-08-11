@@ -1,8 +1,17 @@
-<!-- last_verified: 2026-08-06 -->
-# Feature: Metadata Extraction
+<!-- last_verified: 2026-08-11 -->
+# Feature: Metadata & Artifact Classification
 
 ## Purpose
-Extract rich metadata (checksums, image/PDF fields) from stored objects, on demand. Since uploads go directly to B2, this no longer runs at upload — it is computed only when the Files browser asks for it.
+Two complementary capabilities: (1) geospatial **artifact classification** —
+labelling a mission's B2 objects as orthomosaic / DEM / point cloud / mesh /
+image / report so the mission gallery can group them; and (2) generic rich
+**metadata extraction** (checksums, image/PDF fields) for any stored object,
+computed on demand by the kept Files browser.
+
+## Artifact classification (geospatial)
+- `services/api/app/service/missions.py` — `classify_artifact(key) -> ArtifactKind`: a pure, key-based classifier (by subpath and extension) — `images/` → image; `orthophoto`/`.tif` → orthomosaic; `dsm`/`dtm`/`dem` → DEM; `.las`/`.laz`/`.ply` → point cloud; `.obj`/`.glb`/`.gltf` → mesh; textures; `.pdf`/`.html`/`.json`/`.log` → report; else other.
+- Used by `list_artifacts()` to build the `Artifact[]` the mission gallery renders (`GET /missions/{id}/artifacts`). It classifies without downloading the object — the size comes from the S3 listing.
+- The PDF sniffing from the starter is intentionally left in the generic detail extractor below (the Files browser still allows PDF uploads); geospatial artifact typing is additive, not a replacement.
 
 ## Used By
 - API: `POST /upload/verify` — the direct-to-B2 upload no longer streams bytes through the API, so extraction no longer runs at upload and the verify response returns `metadata: null`
@@ -67,5 +76,6 @@ Extract rich metadata (checksums, image/PDF fields) from stored objects, on dema
 - Pass criteria: focused tests and `pnpm verify` green; explain any skipped `pnpm verify:full` prerequisites
 
 ## Related Docs
+- [Missions](missions.md) — the artifact gallery that consumes `classify_artifact`
 - [ARCHITECTURE.md](../../ARCHITECTURE.md)
 - [File Upload](file-upload.md)

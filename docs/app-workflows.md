@@ -1,7 +1,37 @@
-<!-- last_verified: 2026-08-06 -->
+<!-- last_verified: 2026-08-11 -->
 # App Workflows
 
 User journeys inside the application.
+
+## Run a Photogrammetry Mission (primary journey)
+
+The Mission is the primary entity, and all five verbs are reachable in the UI.
+
+- **Create** — On `/missions`, click **New mission**. The dialog form (matching
+  the settings-form conventions) collects the name (free text, with a
+  placeholder hint like `north-field-2026-08`), an optional description and
+  capture date, a **quality preset** (Select: Draft/Standard/High), the
+  **output products** (Checkbox group: orthomosaic, DEM, point cloud, mesh), and
+  an optional DEM resolution (Select). Defaults are surfaced as
+  placeholder/description guidance only — there is no autofill button. Submitting
+  writes the mission manifest to B2 and navigates to the detail page.
+- **Ingest** — On `/missions/[id]`, drop drone JPEGs into the **Ingest** card.
+  Each image uploads directly to B2 under `missions/<id>/images/` via a
+  presigned PUT; the mission stats and artifact gallery refresh when it finishes.
+- **Run** — Click **Run reconstruction**. The API returns 202 and starts a
+  background job: download inputs from B2 → submit to NodeODM → poll → write
+  outputs back to B2. The status card shows live progress (polled every 2s) and
+  the stage; a failure surfaces the engine error.
+- **Read** — The `/missions` table shows each mission's status, input/output
+  sizes, and write-amplification ratio; the detail page shows the amplification
+  cards and a mission-scoped artifact gallery (download each artifact via a
+  presigned URL, or copy its `s3://bucket/key` URI for downstream GIS tools).
+- **Edit** — The **Edit** dialog (pre-filled, same selectors) updates metadata
+  and options; it is blocked while the mission is running.
+- **Delete** — The **Delete** confirm dialog removes the manifest and every
+  object under `missions/<id>/` — scoped to that prefix only — then returns to
+  the list.
+- See: [Missions](features/missions.md), [Reconstruction](features/reconstruction.md)
 
 ## Upload Files
 
@@ -34,12 +64,11 @@ User journeys inside the application.
 ## View Dashboard
 
 - User navigates to `/` (home)
-- Three parallel API calls load: stats, recent files, upload activity — all served from one shared bucket listing that the API warms at startup
-- While stats load, the page states it in words above the cards rather than showing silent skeletons
-- Stats cards show: total files, storage used, uploads today, total downloads
-- Upload chart shows last 7 days of upload activity as bar chart
-- Recent uploads table shows last 10 files with filename, size, type, date. Each filename links to that file's preview on `/files` — `/files` teaches "click a file to preview it", so the same gesture here has to answer rather than being inert text
-- Empty state: "No files uploaded yet" messages
+- `useMissions()` and `useFileStats()` load in parallel
+- Metric cards show: total missions, completed reconstructions, bucket storage used, and the overall **write amplification** (Σ output ÷ Σ input bytes)
+- The amplification chart plots input vs output MB per reconstructed mission
+- The recent-missions table links each row to its `/missions/<id>` detail page
+- Empty state: "No missions yet" messages
 - See: [Dashboard](features/dashboard.md)
 
 ## Change Preferences

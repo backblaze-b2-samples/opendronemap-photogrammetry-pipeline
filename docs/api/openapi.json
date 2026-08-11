@@ -1,6 +1,63 @@
 {
   "components": {
     "schemas": {
+      "Artifact": {
+        "properties": {
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ArtifactKind"
+          },
+          "size_bytes": {
+            "title": "Size Bytes",
+            "type": "integer"
+          },
+          "size_human": {
+            "title": "Size Human",
+            "type": "string"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "required": [
+          "key",
+          "filename",
+          "kind",
+          "size_bytes",
+          "size_human"
+        ],
+        "title": "Artifact",
+        "type": "object"
+      },
+      "ArtifactKind": {
+        "enum": [
+          "image",
+          "orthomosaic",
+          "dem",
+          "point_cloud",
+          "mesh",
+          "texture",
+          "report",
+          "other"
+        ],
+        "title": "ArtifactKind",
+        "type": "string"
+      },
       "DailyUploadCount": {
         "properties": {
           "date": {
@@ -307,6 +364,351 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "Mission": {
+        "properties": {
+          "capture_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capture Date"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "dem_resolution_cm": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dem Resolution Cm"
+          },
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "image_prefix": {
+            "title": "Image Prefix",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "products": {
+            "items": {
+              "$ref": "#/components/schemas/OutputProduct"
+            },
+            "title": "Products",
+            "type": "array"
+          },
+          "quality": {
+            "$ref": "#/components/schemas/QualityPreset"
+          },
+          "stats": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MissionStats"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/MissionStatus"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "quality",
+          "products",
+          "image_prefix",
+          "status",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "Mission",
+        "type": "object"
+      },
+      "MissionCreate": {
+        "properties": {
+          "capture_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capture Date"
+          },
+          "dem_resolution_cm": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dem Resolution Cm"
+          },
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
+          "image_prefix": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Prefix"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "products": {
+            "items": {
+              "$ref": "#/components/schemas/OutputProduct"
+            },
+            "title": "Products",
+            "type": "array"
+          },
+          "quality": {
+            "$ref": "#/components/schemas/QualityPreset",
+            "default": "standard"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "MissionCreate",
+        "type": "object"
+      },
+      "MissionState": {
+        "enum": [
+          "draft",
+          "queued",
+          "running",
+          "completed",
+          "failed"
+        ],
+        "title": "MissionState",
+        "type": "string"
+      },
+      "MissionStats": {
+        "description": "Write-amplification analytics computed from real bucket sizes.",
+        "properties": {
+          "amplification_ratio": {
+            "title": "Amplification Ratio",
+            "type": "number"
+          },
+          "input_bytes": {
+            "title": "Input Bytes",
+            "type": "integer"
+          },
+          "input_count": {
+            "title": "Input Count",
+            "type": "integer"
+          },
+          "input_human": {
+            "title": "Input Human",
+            "type": "string"
+          },
+          "output_bytes": {
+            "title": "Output Bytes",
+            "type": "integer"
+          },
+          "output_count": {
+            "title": "Output Count",
+            "type": "integer"
+          },
+          "output_human": {
+            "title": "Output Human",
+            "type": "string"
+          }
+        },
+        "required": [
+          "input_count",
+          "input_bytes",
+          "input_human",
+          "output_count",
+          "output_bytes",
+          "output_human",
+          "amplification_ratio"
+        ],
+        "title": "MissionStats",
+        "type": "object"
+      },
+      "MissionStatus": {
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "progress": {
+            "default": 0.0,
+            "title": "Progress",
+            "type": "number"
+          },
+          "stage": {
+            "default": "",
+            "title": "Stage",
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/MissionState"
+          },
+          "task_uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Uuid"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "updated_at"
+        ],
+        "title": "MissionStatus",
+        "type": "object"
+      },
+      "MissionUpdate": {
+        "description": "Partial update \u2014 only applied while the mission is not running.",
+        "properties": {
+          "capture_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capture Date"
+          },
+          "dem_resolution_cm": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dem Resolution Cm"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "products": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/OutputProduct"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Products"
+          },
+          "quality": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QualityPreset"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "MissionUpdate",
+        "type": "object"
+      },
+      "OutputProduct": {
+        "description": "Finite set of products a reconstruction can emit.",
+        "enum": [
+          "orthomosaic",
+          "dem",
+          "point_cloud",
+          "mesh"
+        ],
+        "title": "OutputProduct",
+        "type": "string"
+      },
       "PresignUploadRequest": {
         "description": "What the browser declares before uploading directly to B2.",
         "properties": {
@@ -372,6 +774,16 @@
         ],
         "title": "PresignUploadResponse",
         "type": "object"
+      },
+      "QualityPreset": {
+        "description": "Finite reconstruction quality presets \u2192 ODM flag bundles.",
+        "enum": [
+          "draft",
+          "standard",
+          "high"
+        ],
+        "title": "QualityPreset",
+        "type": "string"
       },
       "UploadStats": {
         "properties": {
@@ -463,12 +875,32 @@
     }
   },
   "info": {
-    "description": "Local API for the Vibe Coding Starter Kit template, providing file upload and management backed by Backblaze B2. This contract documents the template's local API, not a hosted public endpoint.",
-    "title": "Vibe Coding Starter Kit API",
+    "description": "Local API for the OpenDroneMap Photogrammetry Pipeline: ingest drone image sets, run OpenDroneMap reconstructions, and manage the resulting orthomosaics, DEMs, point clouds, and 3D meshes on Backblaze B2. This contract documents the local API, not a hosted public endpoint.",
+    "title": "OpenDroneMap Photogrammetry Pipeline API",
     "version": "0.1.0"
   },
   "openapi": "3.1.0",
   "paths": {
+    "/config": {
+      "get": {
+        "description": "Non-secret bucket coordinates the UI needs to build S3 URIs for artifacts.\n\nBucket name and region are not credentials; they let the mission artifact\nexplorer render a copy-able ``s3://<bucket>/<key>`` URI for downstream GIS\npipelines without hardcoding the bucket in the frontend.",
+        "operationId": "config_config_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Config",
+        "tags": [
+          "health"
+        ]
+      }
+    },
     "/files": {
       "get": {
         "operationId": "list_files_endpoint_files_get",
@@ -996,6 +1428,437 @@
         "summary": "Metrics",
         "tags": [
           "metrics"
+        ]
+      }
+    },
+    "/missions": {
+      "get": {
+        "operationId": "list_missions_endpoint_missions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Mission"
+                  },
+                  "title": "Response List Missions Endpoint Missions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Missions Endpoint",
+        "tags": [
+          "missions"
+        ]
+      },
+      "post": {
+        "operationId": "create_mission_endpoint_missions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MissionCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Mission"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Mission Endpoint",
+        "tags": [
+          "missions"
+        ]
+      }
+    },
+    "/missions/{mission_id}": {
+      "delete": {
+        "operationId": "delete_mission_endpoint_missions__mission_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mission_id",
+            "required": true,
+            "schema": {
+              "title": "Mission Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Mission Endpoint",
+        "tags": [
+          "missions"
+        ]
+      },
+      "get": {
+        "operationId": "get_mission_endpoint_missions__mission_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mission_id",
+            "required": true,
+            "schema": {
+              "title": "Mission Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Mission"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Mission Endpoint",
+        "tags": [
+          "missions"
+        ]
+      },
+      "patch": {
+        "operationId": "update_mission_endpoint_missions__mission_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mission_id",
+            "required": true,
+            "schema": {
+              "title": "Mission Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MissionUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Mission"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Mission Endpoint",
+        "tags": [
+          "missions"
+        ]
+      }
+    },
+    "/missions/{mission_id}/artifacts": {
+      "get": {
+        "operationId": "list_artifacts_endpoint_missions__mission_id__artifacts_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mission_id",
+            "required": true,
+            "schema": {
+              "title": "Mission Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Artifact"
+                  },
+                  "title": "Response List Artifacts Endpoint Missions  Mission Id  Artifacts Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Artifacts Endpoint",
+        "tags": [
+          "missions"
+        ]
+      }
+    },
+    "/missions/{mission_id}/images/presign": {
+      "post": {
+        "description": "Presigned PUT that lands a drone JPEG under the mission's images prefix.",
+        "operationId": "presign_mission_image_missions__mission_id__images_presign_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mission_id",
+            "required": true,
+            "schema": {
+              "title": "Mission Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PresignUploadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PresignUploadResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Presign Mission Image",
+        "tags": [
+          "missions"
+        ]
+      }
+    },
+    "/missions/{mission_id}/images/verify": {
+      "post": {
+        "description": "Confirm a drone JPEG just uploaded directly to the mission's prefix.",
+        "operationId": "verify_mission_image_missions__mission_id__images_verify_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mission_id",
+            "required": true,
+            "schema": {
+              "title": "Mission Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyUploadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileUploadResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Verify Mission Image",
+        "tags": [
+          "missions"
+        ]
+      }
+    },
+    "/missions/{mission_id}/run": {
+      "post": {
+        "description": "Kick off the reconstruction (the marquee action). Returns 202 + queued status.",
+        "operationId": "run_mission_endpoint_missions__mission_id__run_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mission_id",
+            "required": true,
+            "schema": {
+              "title": "Mission Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MissionStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run Mission Endpoint",
+        "tags": [
+          "reconstruction"
+        ]
+      }
+    },
+    "/missions/{mission_id}/status": {
+      "get": {
+        "operationId": "mission_status_endpoint_missions__mission_id__status_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mission_id",
+            "required": true,
+            "schema": {
+              "title": "Mission Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MissionStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Mission Status Endpoint",
+        "tags": [
+          "reconstruction"
         ]
       }
     },

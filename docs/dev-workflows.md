@@ -86,6 +86,34 @@ run pnpm's own commands — `pnpm setup` silently edits your shell profile inste
 of preparing the repo. `predev` and `verify:full` therefore use the `run` form
 too, and `pnpm check:agent-docs` asserts it.
 
+### OpenDroneMap engine (NodeODM)
+
+A real **reconstruction** run needs the local OpenDroneMap engine. It is a
+CPU-based, containerized service — **no GPU required**. Start it with Docker:
+
+```bash
+docker compose up -d          # NodeODM on http://localhost:3001
+```
+
+The backend reaches it via `ODM_NODE_URL` (default `http://localhost:3001`). The
+engine is **not** needed for `pnpm verify` — unit tests mock `pyodm`, so the
+whole non-live suite passes with no NodeODM and no B2. You only need it (plus B2
+credentials) to actually run a mission end-to-end.
+
+### Seed a demo mission (optional)
+
+To land one runnable mission on a fresh clone, run the seed script (needs B2
+credentials and network for the default dataset download):
+
+```bash
+services/api/.venv/bin/python services/api/scripts/seed_mission.py
+```
+
+It creates a mission manifest in B2 and uploads a small public/CC-licensed
+OpenDroneMap sample image set into `missions/<id>/images/`. Use `--images-dir`
+to seed from a local folder of JPEGs instead. See the script header for the
+dataset and its license. The scaffold review does not run a reconstruction.
+
 Cloud or sandboxed agents need network permission for dependency downloads
 during `pnpm run setup`. Dev and E2E runs also need localhost server binding:
 Next.js uses port 3000, and the API uses 8000-8009 via `scripts/pick-port.mjs`.
@@ -125,7 +153,7 @@ with a concurrently held `0.0.0.0` bind and would report a free port as busy.
 - Frontend typecheck: `pnpm typecheck`
 - Frontend lint: `pnpm lint`
 - Backend lint: `pnpm lint:api`
-- E2E: `pnpm test:e2e` (run `pnpm --filter @vibe-coding-starter-kit/web exec playwright install chromium` once first)
+- E2E: `pnpm test:e2e` (run `pnpm --filter @opendronemap-photogrammetry-pipeline/web exec playwright install chromium` once first)
 
 ### Pre-commit
 

@@ -169,11 +169,15 @@ UPLOAD_PREFIX = "uploads/"
 _SNIFF_BYTES = 512
 
 
-def _validate_declared(filename: str, content_type: str, size_bytes: int) -> str:
+def _validate_declared(
+    filename: str, content_type: str, size_bytes: int, key_prefix: str = UPLOAD_PREFIX
+) -> str:
     """Validate a *declared* upload (pre-bytes) and return the key it may write.
 
     Runs at presign time and applies the same allow-list / extension / size
-    rules the old proxy applied to the bytes. Raises UploadError on failure.
+    rules the old proxy applied to the bytes. `key_prefix` lets callers target
+    a scoped prefix (e.g. a mission's `missions/<id>/images/`) instead of the
+    default `uploads/`; the API still mints the final key. Raises UploadError.
     """
     if not filename:
         raise UploadError("No filename provided")
@@ -194,19 +198,20 @@ def _validate_declared(filename: str, content_type: str, size_bytes: int) -> str
             "File extension does not match declared content type",
             status_code=415,
         )
-    return f"{UPLOAD_PREFIX}{safe_name}"
+    return f"{key_prefix}{safe_name}"
 
 
 def create_presigned_upload(
-    filename: str, content_type: str, size_bytes: int
+    filename: str, content_type: str, size_bytes: int, key_prefix: str = UPLOAD_PREFIX
 ) -> PresignUploadResponse:
     """Validate a declared upload and return a presigned PUT for direct-to-B2.
 
     `size_bytes` and `content_type` are signed into the URL, so B2 refuses any
     body of a different size or type — the size/type guarantees survive even
-    though the bytes never reach the API. Raises UploadError on failure.
+    though the bytes never reach the API. `key_prefix` scopes where the object
+    lands (mission ingest passes the mission's images prefix). Raises UploadError.
     """
-    key = _validate_declared(filename, content_type, size_bytes)
+    key = _validate_declared(filename, content_type, size_bytes, key_prefix)
     expires_in = settings.presign_upload_expiry_seconds
     url = generate_presigned_upload(key, content_type, size_bytes, expires_in)
     return PresignUploadResponse(
@@ -220,7 +225,7 @@ def create_presigned_upload(
     )
 
 
-def verify_upload(key: str) -> FileUploadResponse:
+def verify_upload(key: str, key_prefix: str = UPLOAD_PREFIX) -> FileUploadResponse:
     """Inspect an object just uploaded directly to B2 and confirm it is valid.
 
     A HEAD covers size/type; a Range-GET of the leading bytes recovers the
@@ -236,8 +241,8 @@ def verify_upload(key: str) -> FileUploadResponse:
     always served as an allow-listed, non-executable type) and the signed size.
     Enabling quarantine→promote (see the design plan) closes that window.
     """
-    if not key.startswith(UPLOAD_PREFIX):
-        raise UploadError("Upload key must be under the uploads/ prefix")
+    if not key.startswith(key_prefix):
+        raise UploadError(f"Upload key must be under the {key_prefix} prefix")
     try:
         validate_key(key)
     except FileKeyError as e:
