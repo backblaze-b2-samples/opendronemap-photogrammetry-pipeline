@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { Badge } from "@/components/ui/badge";
 import { ErrorState } from "@/components/ui/error-state";
@@ -16,7 +18,11 @@ import {
   MissionStatusCard,
 } from "@/components/missions/mission-status-card";
 import { RunMissionButton } from "@/components/missions/run-mission-button";
-import { useMission } from "@/lib/queries";
+import { qk, useMission, useMissionStatus } from "@/lib/queries";
+import type { MissionState } from "@opendronemap-photogrammetry-pipeline/shared";
+
+const isTerminalState = (state: MissionState | undefined): boolean =>
+  state === "completed" || state === "failed";
 
 const PRODUCT_LABELS: Record<string, string> = {
   orthomosaic: "Orthomosaic",
@@ -29,6 +35,29 @@ export default function MissionDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
   const { data: mission, isLoading, error, refetch } = useMission(id);
+
+  // The status query self-polls every 2s while queued/running and stops at a
+  // terminal state (see `useMissionStatus`). `useMission` — which feeds the Run
+  // button, stats grid, list row, and artifacts — is NOT invalidated on that
+  // running→terminal edge, so it lags until an incidental refetch. Reconcile
+  // the dependent queries once, on that edge, so the page reflects a finished
+  // run immediately.
+  const queryClient = useQueryClient();
+  const { data: liveStatus } = useMissionStatus(id);
+  const liveState = liveStatus?.state;
+  const prevStateRef = useRef<MissionState | undefined>(undefined);
+
+  useEffect(() => {
+    const previous = prevStateRef.current;
+    prevStateRef.current = liveState;
+    // Fire once on the non-terminal → terminal edge (previous must be a known
+    // non-terminal state, so an already-terminal first load does not refetch).
+    if (previous && !isTerminalState(previous) && isTerminalState(liveState)) {
+      queryClient.invalidateQueries({ queryKey: qk.mission(id) });
+      queryClient.invalidateQueries({ queryKey: qk.missions() });
+      queryClient.invalidateQueries({ queryKey: qk.missionArtifacts(id) });
+    }
+  }, [liveState, id, queryClient]);
 
   return (
     <div className="space-y-8">

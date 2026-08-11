@@ -52,9 +52,10 @@ OpenDroneMap engine (NodeODM), then write those far-larger outputs back to B2.
 
 ## UX States
 - Idle: Run button enabled (disabled with a hint when there are no images)
-- Running: progress bar + stage text, polled live
+- Running: stage text + a live-polled progress indicator. During the early phases that report no percentage (queued, "Downloading images from B2", "Submitting to NodeODM") it shows an indeterminate animated bar so the wait reads as working, not frozen; once NodeODM reports a real percentage ("Reconstructing", "Downloading outputs") it switches to a determinate bar with the numeric `NN%` label
 - Failed: destructive alert with the engine error
 - Completed: status badge + outputs visible in the artifact gallery
+- Terminal edge: when the polled status reaches a terminal state (`completed`/`failed`), the detail page reconciles immediately — the Run button re-enables, and the stats grid, mission list row, and artifacts table refresh without needing a navigation or window refocus
 
 ## Verification
 - Test files: `services/api/tests/test_reconstruction.py`

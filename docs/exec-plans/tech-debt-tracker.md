@@ -75,3 +75,13 @@ Low-severity polish, left for a follow-up; none blocks the core flow.
 | Custom `FileNotFoundError` shadowed the built-in | Renamed to `FileNotFoundServiceError` |
 | Dropzone accepted any file type client-side | `accept` allow-list mirroring backend `ALLOWED_TYPES` (tested for drift) |
 | No test harness for feature specs | pytest suite across upload, files, activity, errors, validation, rate limit, pagination |
+
+## 2026-08-11 — verify
+
+Nitpicks surfaced by the 3-lens verify funnel (below the fix-loop bar; logged, not looped):
+
+- Missions list — only the mission-name text is a link (underline on hover); the rest of the row is not clickable and there is no chevron / "View" affordance → entering a mission (the gateway to upload + run) is discoverable only by hovering the name (`.local/verify/A2/02-missions-list.png`).
+- Fresh mission detail — the disabled "Run reconstruction" button's reason ("Upload drone images before running") is only in the hover `title`; there is no always-visible inline hint beside the button (`.local/verify/A2/04-fresh-mission-detail.png`).
+- Completed mission artifacts table — row actions are icon-only (Copy S3 URI / Download rely on `title` tooltips), no visible text labels (`.local/verify/A/09-completed-actions.png`).
+- Missions list — the "Queued" status renders as low-contrast plain text while "Draft"/"Completed" render as pill badges; give "Queued" (and other transient states) a consistent badge treatment (`.local/verify/B/05-missions-during-run.png`).
+- Wayfinding (starter-kit surface, noted-not-fixed) — the top-level `/upload` sidebar page is a generic bucket-root uploader with no mission context; a first-time user aiming to "ingest drone JPEGs" may drop them here where they never feed a reconstruction. It is a KEPT starter-kit contract surface (AGENTS.md §2), and the primary mission path auto-chains correctly (create → mission detail → co-located uploader + Run), so this is a starter-kit-level improvement, not a sample defect (`.local/verify/A2/06-upload.png`).

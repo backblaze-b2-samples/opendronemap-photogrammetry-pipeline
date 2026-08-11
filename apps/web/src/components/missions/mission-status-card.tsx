@@ -22,14 +22,27 @@ export function MissionStatusCard({ mission }: { mission: Mission }) {
       </CardHeader>
       <CardContent className="p-5 space-y-3">
         <p className="text-sm text-muted-foreground">{status.stage || "—"}</p>
-        {active && (
-          <div className="space-y-1.5">
-            <Progress value={status.progress} />
-            <p className="text-xs text-muted-foreground tabular-nums">
-              {Math.round(status.progress)}%
-            </p>
-          </div>
-        )}
+        {active &&
+          (status.progress > 0 ? (
+            // NodeODM reports a real percentage (Reconstructing / Downloading
+            // outputs) → determinate bar + numeric label.
+            <div className="space-y-1.5">
+              <Progress value={status.progress} />
+              <p className="text-xs text-muted-foreground tabular-nums">
+                {Math.round(status.progress)}%
+              </p>
+            </div>
+          ) : (
+            // Early phases (queued, Downloading images from B2, Submitting to
+            // NodeODM) report no percentage. A determinate 0% bar reads as
+            // frozen, so an indeterminate track sweeps instead — visibly
+            // working, without inventing a misleading "0%".
+            <div
+              role="progressbar"
+              aria-label={status.stage || "Working"}
+              className="progress-indeterminate h-2 w-full rounded-full"
+            />
+          ))}
         {status.state === "failed" && status.error && (
           <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
