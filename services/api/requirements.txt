@@ -13,7 +13,7 @@ Pillow>=11.0.0
 PyPDF2>=3.0.0
 # OpenDroneMap NodeODM client — thin HTTP client, the ONLY external engine SDK.
 # Imports cleanly without a live node; unit tests mock it.
-pyodm>=1.5.11
+pyodm>=1.5.13
 
 # Dev / quality
 ruff>=0.8.0
