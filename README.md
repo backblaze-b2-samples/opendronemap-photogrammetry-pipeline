@@ -15,6 +15,28 @@ Explore the [OpenDroneMap Photogrammetry Pipeline project page](https://backblaz
 - FastAPI backend with strict layered architecture, structural tests, and an S3-only B2 boundary
 - Agent-optimized docs — your AI coding agent can read the repo and start contributing immediately
 
+## What it looks like
+
+**Dashboard** — write-amplification metrics, an input-vs-output bytes chart, and recent missions, all computed from real B2 bucket sizes.
+
+![Dashboard with write-amplification metrics and recent missions](docs/images/dashboard.png)
+
+**Missions** — every reconstruction job with its status, input and output sizes, and write-amplification ratio.
+
+![Missions list showing status, input and output sizes, and amplification](docs/images/missions.png)
+
+**Mission detail** — a completed mission's stats plus the full artifact list (orthomosaic, DEM, point cloud, and reports) written back to B2.
+
+![Mission detail with stats and the full artifact list](docs/images/mission-detail.png)
+
+**New mission** — configure a survey's name, capture date, quality preset, and output products before ingesting drone images.
+
+![New mission dialog with quality preset and output product options](docs/images/new-mission.png)
+
+**Upload** — the starter's direct-to-B2 uploader for dropping files straight into the bucket via presigned PUT.
+
+![Upload page with a drag-and-drop dropzone](docs/images/upload.png)
+
 ## Quick Start
 
 You need: Node.js >= 20, pnpm >= 9, Python >= 3.12, **Docker** (for the local NodeODM engine), and a free **[Backblaze B2 account](https://www.backblaze.com/sign-up/ai-cloud-storage?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-opendronemap-photogrammetry-pipeline)**.
