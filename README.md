@@ -5,8 +5,6 @@ Ingest large sets of overlapping drone JPEGs into **[Backblaze B2](https://www.b
 
 Its whole point is **extreme write amplification**: a modest input image set produces outputs several times larger, and B2 is the durable storage layer holding both. The reconstruction runs on local open-source software (OpenDroneMap via NodeODM) — **there is no second API key; B2 credentials only.**
 
-Explore the official [Backblaze B2 AI integrations and sample applications](https://www.backblaze.com/cloud-storage/b2-ai-integrations) directory and the checked-in [local OpenAPI contract](docs/api/openapi.json).
-
 **What you get out of the box:**
 - A **Mission** workflow: create → ingest drone images → run reconstruction → browse and download artifacts → delete, all backed by B2 (no database — missions are JSON manifests in the bucket)
 - Local **OpenDroneMap** engine via NodeODM (CPU, containerized) — orthomosaic, DEM, point cloud, and textured mesh
